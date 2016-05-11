@@ -1,0 +1,2388 @@
+(require 2htdp/image)
+(require racket/list)
+
+
+;; ===========================================
+;; CONTSTANTS
+
+(define G "G")
+(define B "B")
+(define R "R")
+(define Y "Y")
+(define O "O")
+(define W "W")
+(define SQR_SIZE 20)
+
+
+;; ===========================================
+;; Data Definitions
+
+
+;; Color is one of:
+;;  - "G"
+;;  - "B"
+;;  - "R"
+;;  - "Y"
+;;  - "O"
+;;  - "W"
+;; interp. colors on the side of an arubix cube
+
+#;
+(define (fn-for-color c)
+  (cond [(string=? "G" c) (...)]
+        [(string=? "B" c) (...)]
+        [(string=? "R" c) (...)]
+        [(string=? "Y" c) (...)]
+        [(string=? "O" c) (...)]
+        [(string=? "W" c) (...)]))
+
+;; Pos is Natural[1, 54]
+;; interp.
+;;  the position of a square on the board, for a given p, then
+;;    - the row    is 
+;;    - the column is 
+
+
+;; Convert 0-based row and column to Pos
+(define (pos n) (sub1 n))  
+
+
+;; RubixCube is (listof Color)
+;; interp. cube has 6 sides with 9 colors on each side
+;;         top:    rows 1  - 3  (square 1  -  9)
+;;         side1:  rows 4  - 6  (square 10 - 18)
+;;         side2:  rows 7  - 9  (square 19 - 27)
+;;         side3:  rows 10 - 12 (square 28 - 36)
+;;         side4:  rows 13 - 15 (square 37 - 45)
+;;         bottom: rows 16 - 18 (square 46 - 54)
+;; ASSUME: there are exactly 9 of each color
+
+ (columns)
+                    (1) (2) (3)
+
+                     1   2   3   top 
+                     4   5   6   (side 1)
+                     7   8   9
+
+        (side 2)       (side 3)    (side 4)      (side 5)
+(row 1) 10  11  12   19  20  21   28  29  30   37  38  39 
+(row 2) 13  14  15   22  23  24   31  32  33   40  41  42
+(row 3) 16  17  18   25  26  27   34  35  36   43  44  45
+
+                     46  47  48   bottom
+                     49  50  51   (side 6)
+                     52  53  54                                
+
+(define SOLVED1
+  (list G G G
+        G G G
+        G G G
+        B B B
+        B B B
+        B B B
+        R R R
+        R R R
+        R R R
+        Y Y Y
+        Y Y Y
+        Y Y Y
+        O O O
+        O O O
+        O O O
+        W W W
+        W W W
+        W W W))
+
+(define SOLVED2
+  (list W W W
+        W W W
+        W W W
+        G G G
+        G G G
+        G G G
+        Y Y Y
+        Y Y Y
+        Y Y Y
+        B B B
+        B B B
+        B B B
+        R R R
+        R R R
+        R R R
+        O O O
+        O O O
+        O O O))
+
+(define UNSOLVED2
+  (list G Y G
+        O B R
+        W Y O
+        Y G R
+        W O G
+        O R G
+        B R W
+        Y W B
+        W R O
+        B B Y
+        O R W
+        Y O R
+        R B O
+        G Y B
+        B O G
+        R W B
+        G G W
+        W Y Y))
+
+(define UNSOLVED3
+  (list O W Y
+        Y B R
+        R W B
+        G O B
+        O Y W
+        Y O R
+        W O O
+        G O B
+        Y B R
+        W W B
+        R W R
+        G Y W
+        R B Y
+        G R G
+        G Y O
+        G Y W
+        B G G
+        B R O))
+
+(define UNSOLVED4
+  (list R R W
+        R O G
+        G O R
+        B W W
+        Y B W
+        Y O R
+        O G W
+        B Y R
+        Y O R
+        G W B
+        G G R
+        W Y B
+        O Y Y
+        B W B
+        O G G
+        G W B
+        B R O
+        O Y Y))
+
+(define UNSOLVED5
+  (list O B G
+        W Y B
+        R O Y
+        B G Y
+        G O R
+        G O R
+        B G G
+        Y B Y
+        W G O
+        O Y Y
+        O R O
+        Y B O
+        R R W
+        W G Y
+        W W R
+        B R B
+        B W W
+        W R G))
+
+(define UNSOLVED6
+  (list B G W
+        Y B O
+        W W G
+        R B B
+        W R Y
+        O R B
+        O B W
+        R Y G
+        Y G O
+        O Y G
+        Y O R
+        Y O G
+        R W W
+        W W O
+        R O Y
+        R R B
+        B G G
+        G B Y))
+
+(define UNSOLVED-ONE-MOVE
+  (list W W Y
+        W W Y
+        W W Y
+        G G G
+        G G G
+        G G G
+        Y Y O
+        Y Y O
+        Y Y O
+        B B B
+        B B B
+        B B B
+        W R R
+        W R R
+        W R R
+        O O R
+        O O R
+        O O R))
+
+(define UNSOLVED-ONE-MOVE2
+  (list W W W
+        W W W
+        W W W
+        Y Y Y
+        G G G
+        G G G
+        B B B
+        Y Y Y
+        Y Y Y
+        R R R
+        B B B
+        B B B
+        G G G
+        R R R
+        R R R
+        O O O
+        O O O
+        O O O))
+
+(define UNSOLVED7 (list W B R G Y G B R B
+                        O Y Y O G B O O G
+                        O G W R O B Y R Y
+                        R W G Y B W R W W
+                        Y W B O R B R O G
+                        O Y B G W R W Y G))
+
+(define UNSOLVED8 (list G Y O Y Y G B B G
+                        W R R B G B G R Y
+                        Y O O R O Y B Y W
+                        Y W G O B W O O R
+                        W B R R R W W O Y
+                        O G B G W G R W B))
+
+(define UNSOLVED9 (list R W B B Y B O R W
+                        G O G O G G G B O
+                        W W R O O G B G O
+                        B Y R R B O G B Y
+                        Y G W W R Y B R Y
+                        W Y Y R W W R Y O))
+
+(define UNSOLVED10 (list Y R R G Y Y Y W R
+                         O Y O R G W O W R
+                         B B W G O G B Y W
+                         G R G O B Y B R B
+                         Y B G B R G W O G
+                         Y O R O W W W B O))
+
+(define UNSOLVED11 (list G O O G Y B G R O
+                         Y W R Y G B O G R
+                         W W B O O R Y W R
+                         Y Y W B B O B R R
+                         B Y O W R G W G G
+                         G B Y O W Y W R B))
+
+
+(define UNSOLVED12 (list B R R Y Y G R R Y
+                         R B Y B G O G Y W
+                         B B G G O G G W B
+                         O Y W W B W O R W
+                         G G W O R O O R Y
+                         O B Y O W Y R W B))
+
+(define UNSOLVED13 (list W R Y G Y R R Y R
+                         R W G B G B G O W
+                         Y G Y O O B B Y B
+                         B W G W B G W O O
+                         O Y G R R Y Y B W
+                         R O O W W G O R B))
+
+(define UNSOLVED14 (list G R G B Y O B Y Y
+                         Y O W G G W W B W
+                         R R O O O W G R W
+                         B Y Y B B G R W R
+                         R G O O R Y B W B
+                         O B G Y W R O G Y))
+
+(define UNSOLVED15 (list R B Y R Y W R G W
+                         B Y B B G G W B Y
+                         W W O O O G G Y G
+                         G R O R B Y Y B W
+                         B Y Y O R O R O B
+                         R G O W W R O W G))
+
+(define UNSOLVED16 (list Y W B O Y W Y O O
+                         G B B G G B R B W
+                         R W G Y O G O O G
+                         W B Y Y B Y W W O
+                         O R R O R R G Y B
+                         B G R R W G W R Y))
+
+(define UNSOLVED17 (list W Y G Y Y G O W G
+                         O G G B G G O R Y
+                         W R R R O B R B G
+                         W O O Y B W R G R
+                         Y O B O R W W R B
+                         B O Y Y W W Y B B))
+
+(define UNSOLVED18 (list G O O B Y B G O G
+                         W Y W W G W R R B
+                         O Y Y B O G Y W G
+                         R O B Y B Y Y G O
+                         Y G R R R O B R Y
+                         W R O B W W B G W))
+
+(define UNSOLVED19 (list Y B R B Y O B Y O
+                         O W W B G W O W O
+                         R B B O O Y W G R
+                         Y G G R B O G G B
+                         Y R G Y R O Y R W
+                         G R W G W Y B Y R))
+
+(define UNSOLVED20 (list Y G B W Y O G G O
+                         B R W B G B B B G
+                         O Y Y R O O R Y Y
+                         G Y W B B G R G G
+                         R O O W R Y W O O
+                         Y R B W W R W W R))
+
+(define MYOWNCUBE2 (list Y R B B W W G G R
+                         R R Y O G R G O O
+                         R W B G R Y Y G O
+                         W B O B B O W O W
+                         W W B W O B R R O
+                         B Y G G Y Y Y Y G))
+
+(define MYOWNCUBE (list G R W W W R B O G
+                        Y B R Y G G W W W
+                        Y G Y W R O B W R
+                        R Y O Y B Y G O O
+                        G B O B O G Y R B
+                        R R W O Y B O G B))
+
+(define MYOWNCUBE3 (list R G G R W O Y G W
+                         W Y O G R O R B O
+                         B Y O B B O G W R
+                         G Y Y W O R G Y B
+                         R O B B G R W W Y
+                         Y R W W Y B B G O))
+
+(define MYOWNCUBE4 (list Y R G O O O R B W
+                         O G G B B W B G Y
+                         Y W B O Y Y R R R
+                         O Y W B G R G R Y
+                         O B G G W O B G W
+                         B W W Y R Y R W O))
+
+(define MYOWNCUBE5 (list O Y R B G G O W G
+                         W W B G R G R R W
+                         Y O O R W B O R Y
+                         Y W B R O Y G B G
+                         W B G G Y O W O Y
+                         B Y R W B O B Y R))
+
+(define MYOWNCUBE6 (list W O W Y B O Y W B
+                         O G B Y R W G O R
+                         R R Y B Y W G R O
+                         O B R G O G W Y R
+                         B G B R W O Y R O
+                         W B G W G B Y Y G))
+
+(define MYOWNCUBE7 (list G R G B O G R W B
+                         R O Y W Y W O B R
+                         B B O O G Y G Y Y
+                         W R O O W Y B G R
+                         Y W Y B B G W Y G
+                         W G O R R O W R B))
+
+(define TEST-ALL-RED
+  (list R R R R R R R R R
+        R R R R R R R R R
+        R R R R R R R R R
+        R R R R R R R R R
+        R R R R R R R R R
+        R R R R R R R R R))
+
+
+(define TESTER-CUBE
+  (list R R R
+        R B R
+        R R R
+        R R R
+        R B R
+        R R R
+        R R R
+        R B R
+        R R R
+        R R R
+        R B R
+        R R R
+        R R R
+        R B R
+        R R R
+        R R R
+        R B R
+        R R R))
+
+(define TOP-LAYER-TEST-CUBE
+  (list G G G
+        G G G
+        G G G
+        W W W
+        W W W
+        W Y Y
+        O O O
+        O O O
+        R B Y
+        Y Y Y
+        Y Y Y
+        B O B
+        R R R
+        R R R
+        W B R
+        B R O
+        B B B
+        B W O))
+
+(define SOLVED-TOP-LAYER
+  (list G G G
+        G G G
+        G G G
+        W W W
+        W W W
+        W W W
+        O O O
+        O O O
+        O O O
+        Y Y Y
+        Y Y Y
+        Y Y Y
+        R R R
+        R R R
+        R R R
+        B B B
+        B B B
+        B B B))
+
+(define LAST-STEP-CUBE
+  (list G G G
+        G G G
+        G G G
+        W W W
+        W W W
+        W W O
+        O O O
+        O O O
+        B O O
+        Y Y Y
+        Y Y Y
+        Y Y B
+        R R R
+        R R R
+        Y R R
+        W B B
+        B B B
+        B B R))
+
+;; ===========================================
+;; ROW/COLUMN MOVEMENTS
+;; in each section the "FROM" deontes the color at the position that will be transfered to  
+;;   the "TO" at the same position in the list. For instance the second item in CC1FROM is 4, 
+;;   and the second item in CC1TO is 22. This means that when the RubixCube is rotated Clockwise 
+;;   on Column 1 the color that is at square 22 is changed to what the color in square 4 is.
+
+;; #1 
+;; Clockwise on Column 1
+(define CC1FROM (list  1   4  7    19 22 25   52 49 46   45 42 39   10 11 12 15 18 17 16 13))
+(define CC1TO (list    19  22 25   46 49 52   39 42 45   1  4   7   12 15 18 17 16 13 10 11))
+
+;; #2
+;; Counter-Clockwise on Column 1
+(define COC1FROM CC1TO)
+(define COC1TO CC1FROM)
+
+;; #3
+;; Clockwise on Column 3
+(define CC3FROM (list  3  6  9    21 24 27   54 51 48   43 40 37   28 31 34 35 36 33 30 29))
+(define CC3TO   (list  21 24 27   48 51 54   37 40 43   3  6  9    34 35 36 33 30 29 28 31))
+
+;;#4
+;; Counter-Clockwise on Column 3
+(define COC3FROM CC3TO)
+(define COC3TO CC3FROM)
+
+;; #5
+;; Right on Top 1
+(define RT1FROM (list  1  2  3    30 33 36   52 53 54   16 13 10   39 38 37 40 43 44 45 42))
+(define RT1TO   (list 30  33 36   54 53 52   10 13 16   1  2  3    37 40 43 44 45 42 39 38))
+
+;; #6
+;; Left on Top 1
+(define LT1FROM RT1TO)
+(define LT1TO RT1FROM)
+
+;; #7
+;; Right on Top 3
+(define RT7FROM (list  7  8  9    28 31 34   46 47 48   18 15 12   19 20 21 24 27 26 25 22))
+(define RT7TO    (list  28 31 34   48 47 46   12 15 18   7  8  9    21 24 27 26 25 22 19 20))
+
+;; #8
+;; Left on Top 3
+(define LT7FROM RT7TO)
+(define LT7TO RT7FROM)
+
+;; #9
+;; Right on Row 1
+(define RR1FROM (list  10 11 12   19 20 21   28 29 30   37 38 39   1 4 7 8 9 6 3 2))
+(define RR1TO   (list  19 20 21   28 29 30   37 38 39   10 11 12   7 8 9 6 3 2 1 4))
+
+;; #10
+;; Left on Row 1
+(define LR1FROM RR1TO)
+(define LR1TO RR1FROM)
+
+;; #11
+;; Right on Row 3
+(define RR3FROM (list  16 17 18   25 26 27   34 35 36   43 44 45   46 47 48 51 54 53 52 49))
+(define RR3TO   (list  25 26 27   34 35 36   43 44 45   16 17 18   48 51 54 53 52 49 46 47))
+
+;; #12
+;; Left on Row 3
+(define LR3FROM RR3TO)
+(define LR3TO RR3FROM)
+
+;; ===========================================
+;; SIDES
+
+(define SIDE1 (build-list 9 (λ (n) (+ 1 n))))  ;;top
+(define SIDE2 (build-list 9 (λ (n) (+ 10 n))))
+(define SIDE3 (build-list 9 (λ (n) (+ 19 n))))
+(define SIDE4 (build-list 9 (λ (n) (+ 28 n))))
+(define SIDE5 (build-list 9 (λ (n) (+ 37 n))))
+(define SIDE6 (build-list 9 (λ (n) (+ 46 n)))) ;;bottom
+
+(define LIST-SIDES (list SIDE1 SIDE2 SIDE3 SIDE4 SIDE5 SIDE6))
+
+
+;; ===========================================
+;; PIECES
+
+(define CORNER-PIECE-1 (list 1 10 39))
+(define SIDE-PIECE-2 (list 2 38))
+(define CORNER-PIECE-3 (list 3 30 37))
+(define SIDE-PIECE-4 (list 4 11))
+(define SIDE-PIECE-6 (list 6 29))
+(define CORNER-PIECE-7 (list 7 19 12))
+(define SIDE-PIECE-8 (list 8 20))
+(define CORNER-PIECE-9 (list 9 21 28))
+(define SIDE-PIECE-13 (list 13 42))
+(define SIDE-PIECE-15 (list 15 22))
+(define SIDE-PIECE-24 (list 24 31))
+(define SIDE-PIECE-33 (list 33 40))
+(define CORNER-PIECE-46 (list 46 25 18))
+(define CORNER-PIECE-48 (list 48 27 34))
+(define SIDE-PIECE-49 (list 49 17))
+(define SIDE-PIECE-51 (list 51 35))
+(define CORNER-PIECE-52 (list 52 16 45))
+(define SIDE-PIECE-53 (list 53 44))
+(define CORNER-PIECE-54 (list 54 36 43))
+
+(define LIST-PIECES (list CORNER-PIECE-1 
+                          SIDE-PIECE-2 
+                          CORNER-PIECE-3 
+                          SIDE-PIECE-4 
+                          SIDE-PIECE-6
+                          CORNER-PIECE-7 
+                          SIDE-PIECE-8 
+                          CORNER-PIECE-9 
+                          SIDE-PIECE-13 
+                          SIDE-PIECE-15 
+                          SIDE-PIECE-24 
+                          SIDE-PIECE-33 
+                          CORNER-PIECE-46 
+                          CORNER-PIECE-48 
+                          SIDE-PIECE-49 
+                          SIDE-PIECE-51 
+                          CORNER-PIECE-52 
+                          SIDE-PIECE-53 
+                          CORNER-PIECE-54))
+
+;; ============================================
+;; Functions
+
+
+
+(define-struct rcs (rc lon))
+;; RubixCubeState is (RubixCube (listof Integer))
+;; RubixCubeState has a RubixCube and a list of integers representing the movements required
+;;     to get to the current rubix cube value
+
+
+;; (listof Pos) Pos (listof Pos) Function -> (listof Pos)
+;; for testing only, produces a list of starting positions where targeted squares after movements either
+;;  did not end in proper resting space or a square that should have remained in the same place was moved
+;;        - lon0: represents the list of possible starting locations of the squares the step is moving
+;;        - r: the posisiton the square should end up
+;;        - pre: list of squares that should end up in the same place after movements
+;;        - act: actual step you are testing (eg. step1a, step2c)
+(check-expect (test-cube (list 1 2 3) 1 (list 5) (λ (rc t? n) (make-rcs TESTER-CUBE empty))) (list 3 2 1))
+(check-expect (test-cube (list 1 2 3) 2 (list 5) (λ (rc t? n)
+                                                   (make-rcs (change-cube (list 5) (list 2) TESTER-CUBE) empty))) empty)
+(check-expect (test-cube (list 1 2 3) 2 (list 5) (λ (rc t? n)
+                                                   (if (= 2 n)
+                                                       (make-rcs TESTER-CUBE empty)
+                                                       (make-rcs (change-cube (list 5) (list 2) TESTER-CUBE) empty)))) (list 2))
+
+
+(define (test-cube lon0 r pre act)
+  (local [(define testCube
+            (change-cube (build-list (length pre) (λ (n) 5)) pre TESTER-CUBE))
+          
+          (define (test-cube lon rsf)
+            (cond [(empty? lon) rsf]
+                  [else
+                   (if (all-good (first lon))
+                       (test-cube (rest lon) rsf)
+                       (test-cube (rest lon) (cons (first lon) rsf)))]))
+          
+          (define (all-good n)
+            (local [(define attempt (test-act n))]
+              (and (string=? (list-ref attempt (pos r))
+                             (list-ref testCube (pos 5)))
+                   (andmap (λ (p) (string=? (list-ref attempt (pos p))
+                                            (list-ref testCube (pos p)))) pre))))         
+          
+          (define (test-act n)
+            (rcs-rc (act (make-rcs (change-cube (list 5) (list n) testCube) empty) true n)))]
+    (test-cube lon0 empty)))
+
+
+;; RubixCube -> True or Error
+;; produces true if  given cube does not violate one of the following rules, produces appropriate error otherwise:
+;;    - the center square on each side should be different from all other center squares
+;;    - each indvidual piece of the cube does not have more than one of a single color
+;;    - there are exactly 9 of each color, red, blue, orange, green, white and yellow
+;;    - there is no piece that contains both the same color from both the top and the bottom center piece (!!!)
+;;    - there is no piece that contains both the same color from both side 2 and side 4 center pieces (!!!)
+;;    - there is no piece that contains both the same color from both side 3 and side 5 center pieces (!!!)
+
+(define (valid-cube? rc)
+  (local [(define check-colors-count
+            (if (andmap (λ (color) (= 9 (foldr (λ (c r) (if (string=? color c) (+ 1 r) r)) 0 rc))) (list B R Y G W O))
+                true
+                (error "There are not exactly 9 squares for each color blue, red, yellow, green, white or orange")))
+          
+          
+          (define check-all-pieces
+            (if (andmap (λ (n) (all-unique? (list-color n rc))) LIST-PIECES)
+                check-colors-count
+                (error "There is the same color on two or more of the individual pieces")))
+          
+          
+          (define check-center-pieces   
+            (local [(define s1 (side-color 1 (make-rcs rc empty)))
+                    (define s2 (side-color 2 (make-rcs rc empty)))
+                    (define s3 (side-color 3 (make-rcs rc empty)))
+                    (define s4 (side-color 4 (make-rcs rc empty)))
+                    (define s5 (side-color 5 (make-rcs rc empty)))
+                    (define s6 (side-color 6 (make-rcs rc empty)))]
+              (if (or (ormap (λ (c) (string=? s1 c)) (list s2 s3 s4 s5 s6))
+                      (ormap (λ (c) (string=? s2 c)) (list s3 s4 s5 s6))
+                      (ormap (λ (c) (string=? s3 c)) (list s4 s5 s6))
+                      (ormap (λ (c) (string=? s4 c)) (list s5 s6))
+                      (string=? s5 s6))
+                  (error "Center piece are the same on two or more of the sides")
+                  check-all-pieces)))]
+    
+    check-center-pieces))
+
+
+
+
+
+
+
+
+
+
+
+
+
+;; ===============================================================================================================
+;; RubixCube Solver: Main Functions
+;; ===============================================================================================================
+
+;; RubixCube -> RubixCubeState
+;; Given an unordered RubixCube, produces a completed RubixCubeState
+;(check-expect (solved? (rcs-rc (solve UNSOLVED2))) true)
+;(check-expect (solved? (rcs-rc (solve UNSOLVED3))) true)
+;(check-expect (solved? (rcs-rc (solve UNSOLVED4))) true)
+;(check-expect (solved? (rcs-rc (solve UNSOLVED5))) true)
+;(check-expect (solved? (rcs-rc (solve UNSOLVED6))) true)
+;(check-expect (solved? (rcs-rc (solve UNSOLVED7))) true)
+;(check-expect (solved? (rcs-rc (solve UNSOLVED8))) true)
+;(check-expect (solved? (rcs-rc (solve UNSOLVED9))) true)
+;(check-expect (solved? (rcs-rc (solve UNSOLVED10))) true)
+;(check-expect (solved? (rcs-rc (solve UNSOLVED11))) true)
+;(check-expect (solved? (rcs-rc (solve UNSOLVED12))) true)
+;(check-expect (solved? (rcs-rc (solve UNSOLVED13))) true)
+;(check-expect (solved? (rcs-rc (solve UNSOLVED14))) true)
+;(check-expect (solved? (rcs-rc (solve UNSOLVED15))) true)
+;(check-expect (solved? (rcs-rc (solve UNSOLVED16))) true)
+;(check-expect (solved? (rcs-rc (solve UNSOLVED17))) true)
+;(check-expect (solved? (rcs-rc (solve UNSOLVED18))) true)
+;(check-expect (solved? (rcs-rc (solve UNSOLVED19))) true)
+;(check-expect (solved? (rcs-rc (solve UNSOLVED20))) true)
+
+
+
+
+
+(define (solve rc)
+  (step3 (step2 (step1 rc))))
+
+
+;; ---------------------------------------------------------------------------------------------------------------
+;; STEP 1
+;; ---------------------------------------------------------------------------------------------------------------
+
+;; RubixCube -> RubixCubeState
+;; starts with an unordered cube, produces a RubixCubeState with a cross (+) on the top all the same color
+(define (step1 rc)
+  (step1d (step1c (step1b (step1a (make-rcs rc empty) false 0) false 0) false 0) false 0))
+
+;; RubixCubeState -> RubixCubeState
+;; moves the correct piece to position 4, if test? given TRUE then find-side overridden to number given(n)
+(check-expect (test-cube (list 2 4 6 8 11 13 15 17 20 22 24 26 29 31 33 35 38 40 42 44 47 49 51 53)
+                         4
+                         empty
+                         step1a) empty)
+(check-expect (step1a (make-rcs SOLVED1 empty) false 0) (make-rcs SOLVED1 empty))
+
+
+
+(define (step1a rcs test? n)
+  (local [(define side
+            (if test?
+                n
+                (find-side (side-color 1 rcs) (side-color 2 rcs) (rcs-rc rcs))))]
+    (cond [(= 2 side)
+           (record (list 9) rcs)]
+          [(= 4 side)
+           rcs]
+          [(= 6 side)
+           (record (list 10 10) rcs)]
+          [(= 8 side)
+           (record (list 10) rcs)]
+          [(= 11 side)
+           (record (list 2 5 9) rcs)]
+          [(= 13 side)
+           (record (list 5 9) rcs)]
+          [(= 15 side)
+           (record (list 7 10) rcs)]
+          [(= 17 side)
+           (record (list 1 5 9) rcs)]
+          [(= 20 side)
+           (record (list 8 2) rcs)]
+          [(= 22 side)
+           (record (list 2) rcs)]
+          [(= 24 side)
+           (record (list 8 8 2) rcs)]
+          [(= 26 side)
+           (record (list 7 2) rcs)]
+          [(= 29 side)
+           (record (list 3 8 10) rcs)]
+          [(= 31 side)
+           (record (list 8 10) rcs)]
+          [(= 33 side)
+           (record (list 6 9) rcs)]
+          [(= 35 side)
+           (record (list 3 6 9) rcs)]
+          [(= 38 side)
+           (record (list 6 1) rcs)]
+          [(= 40 side)
+           (record (list 6 6 1) rcs)]
+          [(= 42 side)
+           (record (list 1) rcs)]
+          [(= 44 side)
+           (record (list 5 1) rcs)]
+          [(= 47 side)
+           (record (list 12 2 2) rcs)]
+          [(= 49 side)
+           (record (list 2 2) rcs)]
+          [(= 51 side)
+           (record (list 11 11 2 2) rcs)]
+          [(= 53 side)
+           (record (list 11 2 2) rcs)])))
+
+
+;; RubixCubeState -> RubixCubeState
+;; moves the correct piece to position 8 (piece in position 4 remains in same spot)
+(check-expect (test-cube (list 2 6 8 13 15 17 20 22 24 26 29 31 33 35 38 40 42 44 47 49 51 53)
+                         8
+                         (list 4)
+                         step1b) empty)
+(check-expect (step1b (make-rcs SOLVED1 empty) false 0) (make-rcs SOLVED1 empty))
+
+(define (step1b rcs test? n)
+  (local [(define side
+            (if test?
+                n
+                (find-side (side-color 1 rcs) (side-color 3 rcs) (rcs-rc rcs))))]
+    (cond [(= 2 side)
+           (record (list 5 4 4 8) rcs)]
+          [(= 6 side)
+           (record (list 3 3 12 7 7) rcs)]
+          [(= 8 side)
+           rcs]
+          [(= 13 side)
+           (record (list 5 5 4 4 8) rcs)]
+          [(= 15 side)
+           (record (list 7) rcs)]
+          [(= 17 side)
+           (record (list 11 11 4 8) rcs)]
+          [(= 20 side)
+           (record (list 7 7 11 4 8) rcs)]
+          [(= 22 side)
+           (record (list 8 11 4 8) rcs)]
+          [(= 24 side)
+           (record (list 7 11 4 8) rcs)]
+          [(= 26 side)
+           (record (list 11 4 8) rcs)]
+          [(= 29 side)
+           (record (list 3 8) rcs)]
+          [(= 31 side)
+           (record (list 8) rcs)]
+          [(= 33 side)
+           (record (list 3 3 8) rcs)]
+          [(= 35 side)
+           (record (list 4 8) rcs)]
+          [(= 38 side)
+           (record (list 5 5 12 4 8) rcs)]
+          [(= 40 side)
+           (record (list 5 12 4 8) rcs)]
+          [(= 42 side)
+           (record (list 6 12 4 8) rcs)]
+          [(= 44 side)
+           (record (list 12 4 8) rcs)]
+          [(= 47 side)
+           (record (list 8 8) rcs)]
+          [(= 49 side)
+           (record (list 11 8 8) rcs)]
+          [(= 51 side)
+           (record (list 12 8 8) rcs)]
+          [(= 53 side)
+           (record (list 12 12 8 8) rcs)])))
+
+
+;; RubixCubeState -> RubixCubeState
+;; moves the correct piece to position 6 (piece in position 4,8 remains in same spot)
+(check-expect (test-cube (list 2 6 13 15 17 22 24 26 29 31 33 35 38 40 42 44 47 49 51 53)
+                         6
+                         (list 4 8)
+                         step1c) empty)
+(check-expect (step1c (make-rcs SOLVED1 empty) false 0) (make-rcs SOLVED1 empty))
+
+(define (step1c rcs test? n)
+  (local [(define side
+            (if test?
+                n
+                (find-side (side-color 1 rcs) (side-color 4 rcs) (rcs-rc rcs))))]
+    (cond [(= 2 side)
+           (record (list 5 5 12 4 4) rcs)]
+          [(= 6 side)
+           rcs]
+          [(= 13 side)
+           (record (list 6 12 4 4) rcs)]
+          [(= 15 side)
+           (record (list 1 11 2 8 4 7) rcs)]
+          [(= 17 side)
+           (record (list 11 8 4 7) rcs)]
+          [(= 22 side)
+           (record (list 8 11 7 3 5 12 4 4) rcs)]
+          [(= 24 side)
+           (record (list 4) rcs)]
+          [(= 26 side)
+           (record (list 8 4 7) rcs)]
+          [(= 29 side)
+           (record (list 3 3 12 8 4 7) rcs)]
+          [(= 31 side)
+           (record (list 3 12 8 4 7) rcs)]
+          [(= 33 side)
+           (record (list 4 12 8 4 7) rcs)]
+          [(= 35 side)
+           (record (list 12 8 4 7) rcs)]
+          [(= 38 side)
+           (record (list 5 3) rcs)]
+          [(= 40 side)
+           (record (list 3) rcs)]
+          [(= 42 side)
+           (record (list 5 5 3) rcs)]
+          [(= 44 side)
+           (record (list 6 3) rcs)]
+          [(= 47 side)
+           (record (list 11 4 4) rcs)]
+          [(= 49 side)
+           (record (list 11 11 4 4) rcs)]
+          [(= 51 side)
+           (record (list 4 4) rcs)]
+          [(= 53 side)
+           (record (list 12 4 4) rcs)])))
+
+;; RubixCubeState Boolean Natural -> RubixCubeState
+;; moves the correct piece to position 2 (piece in position 4,6,8 remains in same spot)
+(check-expect (test-cube (list 2 13 15 17 22 24 26 31 33 35 38 40 42 44 47 49 51 53)
+                         2
+                         (list 4 6 8)
+                         step1d) empty)
+(check-expect (step1d (make-rcs SOLVED1 empty) false 0) (make-rcs SOLVED1 empty))
+
+(define (step1d rcs test? n)
+  (local [(define side
+            (if test?
+                n
+                (find-side (side-color 1 rcs) (side-color 5 rcs) (rcs-rc rcs))))]
+    (cond [(= 2 side)
+           rcs]
+          [(= 13 side)
+           (record (list 5) rcs)]
+          [(= 15 side)
+           (record (list 1 1 5 2 2) rcs)]
+          [(= 17 side)
+           (record (list 1 5 2) rcs)]
+          [(= 22 side)
+           (record (list 1 12 2 5 5) rcs)]
+          [(= 24 side)
+           (record (list 7 12 8 1 5 2) rcs)]
+          [(= 26 side)
+           (record (list 12 1 5 2) rcs)]
+          [(= 31 side)
+           (record (list 7 11 11 8 6 6) rcs)]
+          [(= 33 side)
+           (record (list 6) rcs)]
+          [(= 35 side)
+           (record (list 3 6 4) rcs)]
+          [(= 38 side)
+           (record (list 5 5 12 3 6 4) rcs)]
+          [(= 40 side)
+           (record (list 5 12 3 6 4) rcs)]
+          [(= 42 side)
+           (record (list 6 12 3 6 4) rcs)]
+          [(= 44 side)
+           (record (list 12 3 6 4) rcs)]
+          [(= 47 side)
+           (record (list 11 11 6 6) rcs)]
+          [(= 49 side)
+           (record (list 12 6 6) rcs)]
+          [(= 51 side)
+           (record (list 11 6 6) rcs)]
+          [(= 53 side)
+           (record (list 6 6) rcs)])))
+
+;; ---------------------------------------------------------------------------------------------------------------
+;; STEP 2
+;; ---------------------------------------------------------------------------------------------------------------
+
+;; RubixCubeState -> RubixCubeState
+;; takes a RubixCubeState where the top cross is finished, produces a RubixCubeState where the top side is all same color
+(define (step2 rcs)
+  (step2d (step2c (step2b (step2a rcs false 0) false 0) false 0) false 0))
+
+
+;; RubixCubeState Boolean Natural -> RubixCubeState
+;; moves the correct piece to position 1 (piece in position 4,6,8,2 remains in same spot)
+(check-expect (test-cube (list 1 3 7 9 10 12 16 18 19 21 25 27 28 30 34 36 37 39 43 45 46 48 52 54)
+                         1
+                         (list 4 6 8 2)
+                         step2a) empty)
+(check-expect (step2a (make-rcs SOLVED1 empty) false 0) (make-rcs SOLVED1 empty))
+
+(define (step2a rcs test? n)
+  (local [(define corner
+            (if test?
+                n
+                (find-corner (side-color 1 rcs) (side-color 2 rcs) (side-color 5 rcs) (rcs-rc rcs))))]
+    (cond [(= 1 corner)
+           rcs]
+          [(= 3 corner)
+           (record  (list 4 11 3 2 12 1) rcs)]
+          [(= 7 corner)
+           (record  (list 8 12 12 7 2 11 1) rcs)]
+          [(= 9 corner)
+           (record  (list 3 11 2 11 1 4) rcs)]
+          [(= 10 corner)
+           (record  (list 2 12 1 11 2 12 1) rcs)]
+          [(= 12 corner)
+           (record  (list 8 12 7 2 12 1 11 2 12 1 11 2 12 1) rcs)]
+          [(= 16 corner)
+           (record  (list 2 12 1) rcs)]
+          [(= 18 corner)
+           (record  (list 12 12 2 11 1) rcs)]
+          [(= 19 corner)
+           (record  (list 8 12 7 2 12 1) rcs)]
+          [(= 21 corner)
+           (record  (list 3 12 4 12 2 12 12 1 11 2 12 1) rcs)]
+          [(= 25 corner)
+           (record  (list 12 2 12 1) rcs)]
+          [(= 27 corner)
+           (record  (list 11 2 11 1) rcs)]
+          [(= 28 corner)
+           (record  (list 3 11 11 4 2 12 1) rcs)]
+          [(= 30 corner)
+           (record  (list 4 2 11 1 3) rcs)]
+          [(= 34 corner)
+           (record  (list 11 11 2 12 1) rcs)]
+          [(= 36 corner)
+           (record  (list 2 11 1) rcs)]
+          [(= 37 corner)
+           (record  (list 4 11 3 2 12 12 1 11 2 12 1) rcs)]
+          [(= 39 corner)
+           (record  (list 2 12 1 11 2 12 1 11 2 12 1 11 2 12 1) rcs)]
+          [(= 43 corner)
+           (record  (list 11 2 12 1) rcs)]
+          [(= 45 corner)
+           (record  (list 12 2 11 1) rcs)]
+          [(= 46 corner)
+           (record  (list 12 2 12 12 1 11 2 12 1) rcs)]
+          [(= 48 corner)
+           (record  (list 12 12 2 12 12 1 11 2 12 1) rcs)]
+          [(= 52 corner)
+           (record  (list 2 12 12 1 11 2 12 1) rcs)]
+          [(= 54 corner)
+           (record  (list 11 2 12 12 1 11 2 12 1) rcs)])))
+
+;; RubixCubeState Boolean Natural -> RubixCubeState
+;; moves the correct piece to position 7 (piece in position 4,6,8,2,1 remains in same spot)
+(check-expect (test-cube (list 3 7 9 12 16 18 19 21 25 27 28 30 34 36 37 43 45 46 48 52 54)
+                         7
+                         (list 4 6 8 2 1)
+                         step2b) empty)
+(check-expect (step2b (make-rcs SOLVED1 empty) false 0) (make-rcs SOLVED1 empty))
+
+(define (step2b rcs test? n)
+  (local [(define corner
+            (if test?
+                n
+                (find-corner (side-color 1 rcs) (side-color 2 rcs) (side-color 3 rcs) (rcs-rc rcs))))]
+    (cond [(= 3 corner)
+           (record (list 5 12 6 12 1 11 2) rcs)]
+          [(= 7 corner)
+           rcs]
+          [(= 9 corner)
+           (record (list 3 12 4 1 11 2) rcs)]
+          [(= 12 corner)
+           (record (list 8 12 7 11 8 12 12 7 11 8 12 7) rcs)]
+          [(= 16 corner)
+           (record (list 11 8 12 7) rcs)]
+          [(= 18 corner)
+           (record (list 12 8 11 7) rcs)]
+          [(= 19 corner)
+           (record (list 8 12 7 11 8 12 7) rcs)]
+          [(= 21 corner)
+           (record (list 3 12 4 8 12 12 7 11 8 12 7) rcs)]
+          [(= 25 corner)
+           (record (list 8 12 7) rcs)]
+          [(= 27 corner)
+           (record (list 12 12 8 11 7) rcs)]
+          [(= 28 corner)
+           (record (list 3 12 4 8 12 7) rcs)]
+          [(= 30 corner)
+           (record (list 4 11 3 8 11 7) rcs)]
+          [(= 34 corner)
+           (record (list 12 8 12 7) rcs)]
+          [(= 36 corner)
+           (record (list 11 8 11 7) rcs)]                   
+          [(= 37 corner)
+           (record (list 5 12 12 6 8 12 7) rcs)]
+          [(= 43 corner)
+           (record (list 12 12 8 12 7) rcs)]
+          [(= 45 corner)
+           (record (list 8 11 7) rcs)]
+          [(= 46 corner)
+           (record (list 11 3 12 12 4 8 12 7) rcs)]
+          [(= 48 corner)
+           (record (list 3 12 12 4 8 12 7) rcs)]
+          [(= 52 corner)
+           (record (list 12 12 3 12 12 4 8 12 7 ) rcs)]
+          [(= 54 corner)
+           (record (list 12 3 12 12 4 8 12 7) rcs)])))
+
+;; RubixCubeState Boolean Natural -> RubixCubeState
+;; moves the correct piece to position 9 (piece in position 4,6,8,2,1,7 remains in same spot)
+(check-expect (test-cube (list 3 9 16 18 21 25 27 28 30 34 36 37 43 45 46 48 52 54)
+                         9
+                         (list 4 6 8 2 1 7)
+                         step2c) empty)
+(check-expect (step2c (make-rcs SOLVED1 empty) false 0) (make-rcs SOLVED1 empty))
+
+(define (step2c rcs test? n)
+  (local [(define corner
+            (if test?
+                n
+                (find-corner (side-color 1 rcs) (side-color 3 rcs) (side-color 4 rcs) (rcs-rc rcs))))]
+    (cond [(= 3 corner)
+           (record (list 4 11 3 12 12 3 12 4) rcs)]
+          [(= 9 corner)
+           rcs]  
+          [(= 16 corner)
+           (record (list 11 11 3 12 4) rcs)]
+          [(= 18 corner)
+           (record (list 3 11 4) rcs)]
+          [(= 21 corner)
+           (record (list 3 12 4 11 3 12 12 4 11 3 12 4) rcs)]
+          [(= 25 corner)
+           (record (list 11 3 12 4) rcs)]
+          [(= 27 corner)
+           (record (list 12 3 11 4) rcs)]                  
+          [(= 28 corner)
+           (record (list 3 12 4 11 3 12 4) rcs)]
+          [(= 30 corner)
+           (record (list 4 11 3 3 12 12 4) rcs)]
+          [(= 34 corner)
+           (record (list 3 12 4) rcs)]
+          [(= 36 corner)
+           (record (list 11 3 12 12 4) rcs)]
+          [(= 37 corner)
+           (record (list 5 12 6 3 12 4) rcs)]
+          [(= 43 corner)
+           (record (list 12 3 12 4) rcs)]
+          [(= 45 corner)
+           (record (list 3 12 12 4) rcs)]
+          [(= 46 corner)
+           (record (list 11 3 12 12 4 11 3 12 4) rcs)]
+          [(= 48 corner)
+           (record (list 3 12 12 4 11 3 12 4) rcs)]
+          [(= 52 corner)
+           (record (list 11 11 3 12 12 4 11 3 12 4 ) rcs)]
+          [(= 54 corner)
+           (record (list 12 3 12 12 4 11 3 12 4) rcs)])))
+
+
+;; RubixCubeState Boolean Natural -> RubixCubeState
+;; moves the correct piece to position 3 (piece in position 4,6,8,2,1,7,9 remains in same spot)
+(check-expect (test-cube (list 3 16 18 25 27 30 34 36 37 43 45 46 48 52 54)
+                         3
+                         (list 4 6 8 2 1 7 9)
+                         step2d) empty)
+(check-expect (step2d (make-rcs SOLVED1 empty) false 0) (make-rcs SOLVED1 empty))
+
+(define (step2d rcs test? n)
+  (local [(define corner
+            (if test?
+                n
+                (find-corner (side-color 1 rcs) (side-color 4 rcs) (side-color 5 rcs) (rcs-rc rcs))))]
+    (cond [(= 3 corner)
+           rcs] 
+          [(= 16 corner)
+           (record (list 4 12 3) rcs)]
+          [(= 18 corner)
+           (record (list 11 11 5 12 12 6 11 5 12 12 6 11 5 12 6) rcs)]
+          [(= 25 corner)
+           (record (list 4 12 12 3) rcs)]
+          [(= 27 corner)
+           (record (list 11 5 12 12 6 11 5 12 12 6 11 5 12 6) rcs)]
+          [(= 30 corner)
+           (record (list 5 12 6 11 5 12 12 6 11 5 12 6) rcs)]
+          [(= 34 corner)
+           (record (list 11 5 12 6) rcs)]
+          [(= 36 corner)
+           (record (list 12 5 11 6) rcs)]
+          [(= 37 corner)
+           (record (list 5 12 6 11 5 12 6) rcs)]
+          [(= 43 corner)
+           (record (list 5 12 6) rcs)]
+          [(= 45 corner)
+           (record (list 11 5 12 12 6) rcs)]
+          [(= 46 corner)
+           (record (list 11 11 5 12 12 6 11 5 12 6) rcs)]
+          [(= 48 corner)
+           (record (list 11 5 12 12 6 11 5 12 6) rcs)]
+          [(= 52 corner)
+           (record (list 12 5 12 12 6 11 5 12 6) rcs)]
+          [(= 54 corner)
+           (record (list 5 12 12 6 11 5 12 6) rcs)])))
+
+;; ---------------------------------------------------------------------------------------------------------------
+;; STEP 3
+;; ---------------------------------------------------------------------------------------------------------------
+
+;; RubixCubeState -> RubixCubeState
+;; given top row and top side completed, produces top side and top 2 rows completed
+
+(define (step3 rcs)
+  (step3d (step3c (step3b (step3a rcs false 0) false 0) false 0) false 0))
+
+;; RubixCubeState Boolean Natural -> RubixCubeState
+;; moves the correct piece to position 15 (piece in position 4,6,8,2,1,7,9,3 remains in same spot)
+(check-expect (test-cube (list 13 15 17 22 24 26 31 33 35 40 42 44 47 49 51 53)
+                         15
+                         (list 4 6 8 2 1 7 9 3)
+                         step3a) empty)
+(check-expect (step3a (make-rcs SOLVED1 empty) false 0) (make-rcs SOLVED1 empty))
+
+(define (step3a rcs test? n)
+  (local [(define side
+            (if test?
+                n
+                (find-side (side-color 2 rcs) (side-color 3 rcs) (rcs-rc rcs))))]
+    (cond [(= 13 side)
+           (record (list 11 6 12 5 12 2 11 1 12 11 1 12 2 12 8 11 7) rcs)]
+          [(= 15 side)
+           rcs]
+          [(= 17 side)
+           (record (list 12 8 11 7 11 1 12 2) rcs)]
+          [(= 22 side)
+           (record (list 11 1 12 2 12 8 11 7 12 12 11 1 12 2 12 8 11 7) rcs)]
+          [(= 24 side)
+           (record (list 12 3 11 4 11 7 12 8 12 12 11 1 12 2 12 8 11 7) rcs)]
+          [(= 26 side)
+           (record (list 12 12 8 11 7 11 1 12 2) rcs)]
+          [(= 31 side)
+           (record (list 11 7 12 8 12 3 11 4 11 11 1 12 2 12 8 11 7) rcs)]
+          [(= 33 side)
+           (record (list 12 5 11 6 11 4 12 3 11 11 1 12 2 12 8 11 7) rcs)]
+          [(= 35 side)
+           (record (list 12 12 12 8 11 7 11 1 12 2) rcs)]
+          [(= 40 side)
+           (record (list 11 4 12 3 12 5 11 6 11 1 12 2 12 8 11 7) rcs)]
+          [(= 42 side)
+           (record (list 12 2 11 1 11 6 12 5 11 1 12 2 12 8 11 7) rcs)]
+          [(= 44 side)
+           (record (list 11 12 8 11 7 11 1 12 2) rcs)]
+          [(= 47 side)
+           (record (list 11 1 12 2 12 8 11 7) rcs)]
+          [(= 49 side)
+           (record (list 11 11 1 12 2 12 8 11 7) rcs)]
+          [(= 51 side)
+           (record (list 12 11 1 12 2 12 8 11 7) rcs)]
+          [(= 53 side)
+           (record (list 12 12 11 1 12 2 12 8 11 7) rcs)])))
+
+;; RubixCubeState Boolean Natural -> RubixCubeState
+;; moves the correct piece to position 13 (piece in position 4,6,8,2,1,7,9,3,15 remains in same spot)
+(check-expect (test-cube (list 13 17 24 26 31 33 35 40 42 44 47 49 51 53)
+                         13
+                         (list 4 6 8 2 1 7 9 3 15)
+                         step3b) empty)
+(check-expect (step3b (make-rcs SOLVED1 empty) false 0) (make-rcs SOLVED1 empty))
+
+(define (step3b rcs test? n)
+  (local [(define side
+            (if test?
+                n
+                (find-side (side-color 2 rcs) (side-color 5 rcs) (rcs-rc rcs))))]
+    (cond [(= 13 side)
+           rcs]
+          [(= 17 side)
+           (record (list 11 6 12 5 12 2 11 1) rcs)]
+          [(= 24 side)
+           (record (list 12 3 11 4 11 7 12 8 12 2 11 1 11 6 12 5) rcs)]
+          [(= 26 side)
+           (record (list 12 11 6 12 5 12 2 11 1) rcs)]                 
+          [(= 31 side)
+           (record (list 11 7 12 8 12 3 11 4 12 12 2 11 1 11 6 12 5) rcs)]
+          [(= 33 side)
+           (record (list 12 5 11 6 11 4 12 3 12 12 2 11 1 11 6 12 5) rcs)]
+          [(= 35 side)
+           (record (list 12 12 11 6 12 5 12 2 11 1) rcs)]
+          [(= 40 side)
+           (record (list 11 4 12 3 12 5 11 6 12 12 12 2 11 1 11 6 12 5) rcs)]
+          [(= 42 side)
+           (record (list 11 6 12 5 12 2 11 1 12 12 11 6 12 5 12 2 11 1) rcs)]
+          [(= 44 side)
+           (record (list 11 11 6 12 5 12 2 11 1) rcs)]
+          [(= 47 side)
+           (record (list 12 12 12 2 11 1 11 6 12 5) rcs)]
+          [(= 49 side)
+           (record (list 12 12 2 11 1 11 6 12 5) rcs)]
+          [(= 51 side)
+           (record (list 11 12 2 11 1 11 6 12 5) rcs)]
+          [(= 53 side)
+           (record (list 12 2 11 1 11 6 12 5) rcs)])))
+
+;; RubixCubeState Boolean Natural -> RubixCubeState
+;; moves the correct piece to position 24 (piece in position 4,6,8,2,1,7,9,3,15,13 remains in same spot)
+(check-expect (test-cube (list 17 24 26 31 33 35 40 44 47 49 51 53)
+                         24
+                         (list 4 6 8 2 1 7 9 3 15 13)
+                         step3c) empty)
+(check-expect (step3c (make-rcs SOLVED1 empty) false 0) (make-rcs SOLVED1 empty))
+
+
+(define (step3c rcs test? n)
+  (local [(define side
+            (if test?
+                n
+                (find-side (side-color 3 rcs) (side-color 4 rcs) (rcs-rc rcs))))]
+    (cond 
+      [(= 17 side)
+       (record (list 11 12 3 11 4 11 7 12 8) rcs)]
+      [(= 24 side)
+       rcs]
+      [(= 26 side)
+       (record (list 12 3 11 4 11 7 12 8) rcs)]                 
+      [(= 31 side)
+       (record (list 11 7 12 8 12 3 11 4 12 12 11 7 12 8 12 3 11 4) rcs)]
+      [(= 33 side)
+       (record (list 12 5 11 6 11 4 12 3 12 12 11 7 12 8 12 3 11 4) rcs)]
+      [(= 35 side)
+       (record (list 12 12 3 11 4 11 7 12 8) rcs)]
+      [(= 40 side)
+       (record (list 11 4 12 3 12 5 11 6 11 11 7 12 8 12 3 11 4) rcs)]
+      [(= 44 side)
+       (record (list 12 12 12 3 11 4 11 7 12 8) rcs)]
+      [(= 47 side)
+       (record (list 11 11 7 12 8 12 3 11 4) rcs)]
+      [(= 49 side)
+       (record (list 11 11 11 7 12 8 12 3 11 4) rcs)]
+      [(= 51 side)
+       (record (list 11 7 12 8 12 3 11 4) rcs)]
+      [(= 53 side)
+       (record (list 12 11 7 12 8 12 3 11 4) rcs)])))
+
+;; RubixCubeState Boolean Natural -> RubixCubeState
+;; moves the correct piece to position 33 (piece in position 4,6,8,2,1,7,9,3,15,13,24 remains in same spot)
+(check-expect (test-cube (list 17 26 33 35 40 44 47 49 51 53)
+                         33
+                         (list 4 6 8 2 1 7 9 3 15 13 24)
+                         step3d) empty)
+(check-expect (step3d (make-rcs SOLVED1 empty) false 0) (make-rcs SOLVED1 empty))
+
+
+(define (step3d rcs test? n)
+  (local [(define side
+            (if test?
+                n
+                (find-side (side-color 4 rcs) (side-color 5 rcs) (rcs-rc rcs))))]
+    (cond 
+      [(= 17 side)
+       (record (list 11 11 12 5 11 6 11 4 12 3) rcs)]
+      [(= 26 side)
+       (record (list 11 12 5 11 6 11 4 12 3) rcs)]                 
+      [(= 33 side)
+       rcs]
+      [(= 35 side)
+       (record (list 12 5 11 6 11 4 12 3) rcs)]
+      [(= 40 side)
+       (record (list 11 4 12 3 12 5 11 6 12 12 11 4 12 3 12 5 11 6) rcs)]
+      [(= 44 side)
+       (record (list 12 12 5 11 6 11 4 12 3) rcs)]                    
+      [(= 47 side)
+       (record (list 12 12 11 4 12 3 12 5 11 6) rcs)]
+      [(= 49 side)
+       (record (list 12 11 4 12 3 12 5 11 6) rcs)]
+      [(= 51 side)
+       (record (list 11 11 4 12 3 12 5 11 6) rcs)]
+      [(= 53 side)
+       (record (list 11 4 12 3 12 5 11 6) rcs)])))
+
+;; ---------------------------------------------------------------------------------------------------------------
+;; STEP 4
+;; ---------------------------------------------------------------------------------------------------------------
+
+
+;; RubixCubeState -> RubixCubeState
+;; assume cube has been solved up to and including the first two layers
+;; this will create the cross on the top
+(check-expect (step4 (make-rcs TOP-LAYER-TEST-CUBE empty)) SOLVED-TOP-LAYER)
+(check-expect (step4 (make-rcs LAST-STEP-CUBE empty)) SOLVED-TOP-LAYER)
+
+
+(define (step4 rcs0)
+  (local [(define s6-centre
+            (list-ref (rcs-rc rcs0) (pos 50)))
+          (define s2-centre
+            (list-ref (rcs-rc rcs0) (pos 14)))
+          (define s3-centre
+            (list-ref (rcs-rc rcs0) (pos 23)))
+          (define s4-centre
+            (list-ref (rcs-rc rcs0) (pos 32)))
+          (define s5-centre
+            (list-ref (rcs-rc rcs0) (pos 41)))
+          
+          
+          (define (find-cross rcs)
+            (local [(define side1 (find-side s6-centre s2-centre (rcs-rc rcs)))
+                    (define side2 (find-side s6-centre s3-centre (rcs-rc rcs)))
+                    (define side3 (find-side s6-centre s4-centre (rcs-rc rcs)))
+                    (define side4 (find-side s6-centre s5-centre (rcs-rc rcs)))]
+              (cond [(and (or (= 49 side1)
+                              (= 49 side2)
+                              (= 49 side3)
+                              (= 49 side4))
+                          (or (= 47 side1)
+                              (= 47 side2)
+                              (= 47 side3)
+                              (= 47 side4))
+                          (or (= 51 side1)
+                              (= 51 side2)
+                              (= 51 side3)
+                              (= 51 side4))
+                          (or (= 53 side1)
+                              (= 53 side2)
+                              (= 53 side3)
+                              (= 53 side4))) (permute-edges rcs)]
+                    [(and (or (= 47 side1)
+                              (= 47 side2)
+                              (= 47 side3)
+                              (= 47 side4))
+                          (or (= 49 side1)
+                              (= 49 side2)
+                              (= 49 side3)
+                              (= 49 side4))) (permute-edges (record (list 6 4 11 3 12 5 6 4 11 3 12 5) rcs))]
+                    [(and (or (= 49 side1)
+                              (= 49 side2)
+                              (= 49 side3)
+                              (= 49 side4))
+                          (or (= 53 side1)
+                              (= 53 side2)
+                              (= 53 side3)
+                              (= 53 side4))) (permute-edges (record (list 4 7 11 8 12 3 4 7 11 8 12 3) rcs))]
+                    [(and (or (= 53 side1)
+                              (= 53 side2)
+                              (= 53 side3)
+                              (= 53 side4))
+                          (or (= 51 side1)
+                              (= 51 side2)
+                              (= 51 side3)
+                              (= 51 side4))) (permute-edges (record (list 7 1 11 2 12 8 7 1 11 2 12 8) rcs))]
+                    [(and (or (= 51 side1)
+                              (= 51 side2)
+                              (= 51 side3)
+                              (= 51 side4))
+                          (or (= 47 side1)
+                              (= 47 side2)
+                              (= 47 side3)
+                              (= 47 side4))) (permute-edges (record (list 1 6 11 5 12 2 1 6 11 5 12 2) rcs))]
+                    [(and (or (= 47 side1)
+                              (= 47 side2)
+                              (= 47 side3)
+                              (= 47 side4))
+                          (or (= 53 side1)
+                              (= 53 side2)
+                              (= 53 side3)
+                              (= 53 side4))) (permute-edges (record (list 1 6 11 5 12 2) rcs))]
+                    [(and (or (= 49 side1)
+                              (= 49 side2)
+                              (= 49 side3)
+                              (= 49 side4))
+                          (or (= 51 side1)
+                              (= 51 side2)
+                              (= 51 side3)
+                              (= 51 side4))) (permute-edges (record (list 6 4 11 3 12 5) rcs))])))
+          
+          (define (permute-edges rcs)
+            (local [(define side1 (find-side s2-centre s6-centre (rcs-rc rcs)))
+                    (define side2 (find-side s3-centre s6-centre (rcs-rc rcs)))
+                    (define side3 (find-side s4-centre s6-centre (rcs-rc rcs)))
+                    (define side4 (find-side s5-centre s6-centre (rcs-rc rcs)))
+                    (define swap17-26 (list 6 11 5 11 6 11 11 5 11))
+                    (define swap26-35 (list 1 11 2 11 1 11 11 2 11))
+                    (define swap35-44 (list 7 11 8 11 7 11 11 8 11))
+                    (define swap44-17 (list 4 11 3 11 4 11 11 3 11))]
+              (cond [(and (= 17 side1) (= 26 side2) (= 35 side3) (= 44 side4))
+                     (orient-corners rcs)]
+                    [(and (= 17 side1) (= 26 side2) (= 35 side4) (= 44 side3))
+                     (orient-corners (record swap35-44 rcs))]
+                    [(and (= 17 side1) (= 26 side3) (= 35 side4) (= 44 side2))
+                     (orient-corners (record (append swap35-44 swap26-35) rcs))]
+                    [(and (= 17 side1) (= 26 side3) (= 35 side2) (= 44 side4))
+                     (orient-corners (record swap26-35 rcs))]
+                    [(and (= 17 side1) (= 26 side4) (= 35 side2) (= 44 side3))
+                     (orient-corners (record (append swap26-35 swap35-44) rcs))]
+                    [(and (= 17 side1) (= 26 side4) (= 35 side3) (= 44 side2))
+                     (orient-corners (record (append swap35-44 swap26-35 swap35-44) rcs))]
+                    [(and (= 17 side2) (= 26 side3) (= 35 side4) (= 44 side1))
+                     (orient-corners (record (append swap35-44 swap26-35 swap17-26) rcs))]
+                    [(and (= 17 side2) (= 26 side3) (= 35 side1) (= 44 side4))
+                     (orient-corners (record (append swap26-35 swap17-26) rcs))]
+                    [(and (= 17 side2) (= 26 side4) (= 35 side1) (= 44 side3))
+                     (orient-corners (record (append swap26-35 swap17-26 swap35-44) rcs))]
+                    [(and (= 17 side2) (= 26 side4) (= 35 side3) (= 44 side1))
+                     (orient-corners (record (append swap17-26 swap44-17) rcs))]
+                    [(and (= 17 side2) (= 26 side1) (= 35 side4) (= 44 side3))
+                     (orient-corners (record (append swap17-26 swap35-44) rcs))]
+                    [(and (= 17 side2) (= 26 side1) (= 35 side3) (= 44 side4))
+                     (orient-corners (record swap17-26 rcs))]
+                    [(and (= 17 side3) (= 26 side4) (= 35 side1) (= 44 side2))
+                     (orient-corners (record (append swap17-26 swap35-44 swap44-17 swap26-35) rcs))]
+                    [(and (= 17 side3) (= 26 side4) (= 35 side2) (= 44 side1))
+                     (orient-corners (record (append swap17-26 swap44-17 swap26-35) rcs))]
+                    [(and (= 17 side3) (= 26 side1) (= 35 side2) (= 44 side4))
+                     (orient-corners (record (append swap17-26 swap26-35) rcs))]
+                    [(and (= 17 side3) (= 26 side1) (= 35 side4) (= 44 side2))
+                     (orient-corners (record (append swap35-44 swap17-26 swap26-35) rcs))]
+                    [(and (= 17 side3) (= 26 side2) (= 35 side4) (= 44 side1))
+                     (orient-corners (record (append swap44-17 swap35-44) rcs))]
+                    [(and (= 17 side3) (= 26 side2) (= 35 side1) (= 44 side4))
+                     (orient-corners (record (append swap26-35 swap17-26 swap26-35) rcs))]
+                    [(and (= 17 side4) (= 26 side1) (= 35 side2) (= 44 side3))
+                     (orient-corners (record (append swap17-26 swap26-35 swap35-44) rcs))]
+                    [(and (= 17 side4) (= 26 side1) (= 35 side3) (= 44 side2))
+                     (orient-corners (record (append swap44-17 swap17-26) rcs))]
+                    [(and (= 17 side4) (= 26 side3) (= 35 side2) (= 44 side1))
+                     (orient-corners (record (append swap44-17 swap26-35) rcs))]
+                    [(and (= 17 side4) (= 26 side3) (= 35 side1) (= 44 side2))
+                     (orient-corners (record (append swap35-44 swap44-17 swap26-35) rcs))]
+                    [(and (= 17 side4) (= 26 side2) (= 35 side3) (= 44 side1))
+                     (orient-corners (record swap44-17 rcs))]
+                    [(and (= 17 side4) (= 26 side2) (= 35 side1) (= 44 side3))
+                     (orient-corners (record (append swap35-44 swap44-17) rcs))])))
+          
+          (define (orient-corners rcs)
+            (local [(define corner1 (find-corner s6-centre s2-centre s5-centre (rcs-rc rcs)))
+                    (define corner2 (find-corner s6-centre s3-centre s2-centre (rcs-rc rcs)))
+                    (define corner3 (find-corner s6-centre s4-centre s3-centre (rcs-rc rcs)))
+                    (define corner4 (find-corner s6-centre s5-centre s4-centre (rcs-rc rcs)))]
+              (cond [(and (or (= 52 corner1)
+                              (= 16 corner1)
+                              (= 45 corner1))
+                          (or (= 46 corner2)
+                              (= 18 corner2)
+                              (= 25 corner2))
+                          (or (= 48 corner3)
+                              (= 27 corner3)
+                              (= 34 corner3))
+                          (or (= 54 corner4)
+                              (= 36 corner4)
+                              (= 43 corner4))) (permute-corners rcs)]
+                    [(and (or (= 52 corner1)
+                              (= 16 corner1)
+                              (= 45 corner1))
+                          (or (= 46 corner3)
+                              (= 18 corner3)
+                              (= 25 corner3))
+                          (or (= 48 corner4)
+                              (= 27 corner4)
+                              (= 34 corner4))
+                          (or (= 54 corner2)
+                              (= 36 corner2)
+                              (= 43 corner2))) (permute-corners (record (list 11 6 12 8 11 5 12 7 11 6 12 8 11 5 12 7) rcs))]
+                    [(and (or (= 52 corner1)
+                              (= 16 corner1)
+                              (= 45 corner1))
+                          (or (= 46 corner4)
+                              (= 18 corner4)
+                              (= 25 corner4))
+                          (or (= 48 corner2)
+                              (= 27 corner2)
+                              (= 34 corner2))
+                          (or (= 54 corner3)
+                              (= 36 corner3)
+                              (= 43 corner3))) (permute-corners (record (list 11 6 12 8 11 5 12 7) rcs))]
+                    [(and (or (= 52 corner2)
+                              (= 16 corner2)
+                              (= 45 corner2))
+                          (or (= 46 corner1)
+                              (= 18 corner1)
+                              (= 25 corner1))
+                          (or (= 48 corner4)
+                              (= 27 corner4)
+                              (= 34 corner4))
+                          (or (= 54 corner3)
+                              (= 36 corner3)
+                              (= 43 corner3))) (permute-corners (record (list 11 1 12 3 11 2 12 4 11 7 12 5 11 8 12 6) rcs))]
+                    [(and (or (= 52 corner2)
+                              (= 16 corner2)
+                              (= 45 corner2))
+                          (or (= 46 corner4)
+                              (= 18 corner4)
+                              (= 25 corner4))
+                          (or (= 48 corner3)
+                              (= 27 corner3)
+                              (= 34 corner3))
+                          (or (= 54 corner1)
+                              (= 36 corner1)
+                              (= 43 corner1))) (permute-corners (record (list 11 7 12 5 11 8 12 6) rcs))]
+;                    [(and (or (= 54 corner2)
+;                              (= 16 corner2)
+;                              (= 45 corner2))
+;                          (or (= 46 corner4)
+;                              (= 18 corner4)
+;                              (= 25 corner4))
+;                          (or (= 48 corner1)
+;                              (= 27 corner1)
+;                              (= 34 corner1))
+;                          (or (= 54 corner3)
+;                              (= 36 corner3)
+;                              (= 43 corner3))) (permute-corners (record (list xxx) rcs))] may not be real state
+                    [(and (or (= 52 corner2)
+                              (= 16 corner2)
+                              (= 45 corner2))
+                          (or (= 46 corner3)
+                              (= 18 corner3)
+                              (= 25 corner3))
+                          (or (= 48 corner1)
+                              (= 27 corner1)
+                              (= 34 corner1))
+                          (or (= 54 corner4)
+                              (= 36 corner4)
+                              (= 43 corner4))) (permute-corners (record (list 11 4 12 2 11 3 12 1 11 4 12 2 11 3 12 1) rcs))]
+;                    [(and (or (= 54 corner2)
+;                              (= 16 corner2)
+;                              (= 45 corner2))
+;                          (or (= 46 corner3)
+;                              (= 18 corner3)
+;                              (= 25 corner3))
+;                          (or (= 48 corner4)
+;                              (= 27 corner4)
+;                              (= 34 corner4))
+;                          (or (= 54 corner1)
+;                              (= 36 corner1)
+;                              (= 43 corner1))) (permute-corners (record (list xxx) rcs))] may not be real state
+                    [(and (or (= 52 corner3)
+                              (= 16 corner3)
+                              (= 45 corner3))
+                          (or (= 46 corner1)
+                              (= 18 corner1)
+                              (= 25 corner1))
+                          (or (= 48 corner2)
+                              (= 27 corner2)
+                              (= 34 corner2))
+                          (or (= 54 corner4)
+                              (= 36 corner4)
+                              (= 43 corner4))) (permute-corners (record (list 11 4 12 2 11 3 12 1) rcs))]
+;                    [(and (or (= 54 corner3)
+;                              (= 16 corner3)
+;                              (= 45 corner3))
+;                          (or (= 46 corner1)
+;                              (= 18 corner1)
+;                              (= 25 corner1))
+;                          (or (= 48 corner4)
+;                              (= 27 corner4)
+;                              (= 34 corner4))
+;                          (or (= 54 corner2)
+;                              (= 36 corner2)
+;                              (= 43 corner2))) (permute-corners (record (list xxx) rcs))] may not be a real state
+                    [(and (or (= 52 corner3)
+                              (= 16 corner3)
+                              (= 45 corner3))
+                          (or (= 46 corner2)
+                              (= 18 corner2)
+                              (= 25 corner2))
+                          (or (= 48 corner4)
+                              (= 27 corner4)
+                              (= 34 corner4))
+                          (or (= 54 corner1)
+                              (= 36 corner1)
+                              (= 43 corner1))) (permute-corners (record (list 11 1 12 3 11 2 12 4 11 1 12 3 11 2 12 4) rcs))]
+                    [(and (or (= 52 corner3)
+                              (= 16 corner3)
+                              (= 45 corner3))
+                          (or (= 46 corner4)
+                              (= 18 corner4)
+                              (= 25 corner4))
+                          (or (= 48 corner1)
+                              (= 27 corner1)
+                              (= 34 corner1))
+                          (or (= 54 corner2)
+                              (= 36 corner2)
+                              (= 43 corner2))) (permute-corners (record (list 11 7 12 5 11 8 12 6 11 1 12 3 11 2 12 4) rcs))]
+;                    [(and (or (= 54 corner3)
+;                              (= 16 corner3)
+;                              (= 45 corner3))
+;                          (or (= 46 corner4)
+;                              (= 18 corner4)
+;                              (= 25 corner4))
+;                          (or (= 48 corner2)
+;                              (= 27 corner2)
+;                              (= 34 corner2))
+;                          (or (= 54 corner1)
+;                              (= 36 corner1)
+;                              (= 43 corner1))) (permute-corners (record (list xxx) rcs))] may not be real state
+                    [(and (or (= 52 corner4)
+                              (= 16 corner4)
+                              (= 45 corner4))
+                          (or (= 46 corner1)
+                              (= 18 corner1)
+                              (= 25 corner1))
+                          (or (= 48 corner3)
+                              (= 27 corner3)
+                              (= 34 corner3))
+                          (or (= 54 corner2)
+                              (= 36 corner2)
+                              (= 43 corner2))) (permute-corners (record (list 11 7 12 5 11 8 12 6) rcs))]
+;                    [(and (or (= 54 corner4)
+;                              (= 16 corner4)
+;                              (= 45 corner4))
+;                          (or (= 46 corner1)
+;                              (= 18 corner1)
+;                              (= 25 corner1))
+;                          (or (= 48 corner2)
+;                              (= 27 corner2)
+;                              (= 34 corner2))
+;                          (or (= 54 corner3)
+;                              (= 36 corner3)
+;                              (= 43 corner3))) (permute-corners (record (list xxx) rcs))] may not be real state
+                    [(and (or (= 52 corner4)
+                              (= 16 corner4)
+                              (= 45 corner4))
+                          (or (= 46 corner2)
+                              (= 18 corner2)
+                              (= 25 corner2))
+                          (or (= 48 corner1)
+                              (= 27 corner1)
+                              (= 34 corner1))
+                          (or (= 54 corner3)
+                              (= 36 corner3)
+                              (= 43 corner3))) (permute-corners (record (list 11 1 12 3 11 2 12 4) rcs))]
+;                    [(and (or (= 54 corner4)
+;                              (= 16 corner4)
+;                              (= 45 corner4))
+;                          (or (= 46 corner3)
+;                              (= 18 corner3)
+;                              (= 25 corner3))
+;                          (or (= 48 corner1)
+;                              (= 27 corner1)
+;                              (= 34 corner1))
+;                          (or (= 54 corner2)
+;                              (= 36 corner2)
+;                              (= 43 corner2))) (permute-corners (record (list xxx) rcs))] may not be real state
+                    [(and (or (= 52 corner4)
+                              (= 16 corner4)
+                              (= 45 corner4))
+                          (or (= 46 corner3)
+                              (= 18 corner3)
+                              (= 25 corner3))
+                          (or (= 48 corner2)
+                              (= 27 corner2)
+                              (= 34 corner2))
+                          (or (= 54 corner1)
+                              (= 36 corner1)
+                              (= 43 corner1))) (permute-corners (record (list 11 6 12 8 11 5 12 7 11 1 12 3 11 2 12 4) rcs))])))
+                    
+          
+          (define (permute-corners rcs)
+            (local [(define corner1 (find-corner s6-centre s2-centre s5-centre (rcs-rc rcs)))]
+              (cond [(= 52 corner1) (permute-corner2 (record (list 12) rcs))]
+                    [(= 45 corner1) (permute-corner2 (record (list 5 10 6 9 5 10 6 9 5 10 6 9 5 10 6 9 12) rcs))]
+                    [(= 16 corner1) (permute-corner2 (record (list 5 10 6 9 5 10 6 9 12) rcs))])))
+
+          (define (permute-corner2 rcs)
+            (local [(define corner2 (find-corner s6-centre s3-centre s2-centre (rcs-rc rcs)))]
+              (cond [(= 52 corner2) (permute-corner3 (record (list 12) rcs))]
+                    [(= 45 corner2) (permute-corner3 (record (list 5 10 6 9 5 10 6 9 5 10 6 9 5 10 6 9 12) rcs))]
+                    [(= 16 corner2) (permute-corner3 (record (list 5 10 6 9 5 10 6 9 12) rcs))])))
+
+          (define (permute-corner3 rcs)
+            (local [(define corner3 (find-corner s6-centre s4-centre s3-centre (rcs-rc rcs)))]
+              (cond [(= 52 corner3) (permute-corner4 (record (list 12) rcs))]
+                    [(= 45 corner3) (permute-corner4 (record (list 5 10 6 9 5 10 6 9 5 10 6 9 5 10 6 9 12) rcs))]
+                    [(= 16 corner3) (permute-corner4 (record (list 5 10 6 9 5 10 6 9 12) rcs))])))
+
+          (define (permute-corner4 rcs)
+            (local [(define corner4 (find-corner s6-centre s5-centre s4-centre (rcs-rc rcs)))]
+              (cond [(= 52 corner4) (record (list 12) rcs)]
+                    [(= 45 corner4) (record (list 5 10 6 9 5 10 6 9 5 10 6 9 5 10 6 9 12) rcs)]
+                    [(= 16 corner4) (record (list 5 10 6 9 5 10 6 9 12) rcs)])))
+          ]
+    
+    (find-cross rcs0)))
+
+;; Natural[1,6] RubixCubeState -> Color
+;; given a side number and a rubixcube, returns the color of the center square
+(check-expect (side-color 1 (make-rcs UNSOLVED2 empty)) B)
+(check-expect (side-color 2 (make-rcs UNSOLVED2 empty)) O)
+(check-expect (side-color 3 (make-rcs UNSOLVED2 empty)) W)
+(check-expect (side-color 4 (make-rcs UNSOLVED2 empty)) R)
+(check-expect (side-color 5 (make-rcs UNSOLVED2 empty)) Y)
+(check-expect (side-color 6 (make-rcs UNSOLVED2 empty)) G)
+
+(define (side-color n rcs)
+  (cond [(= n 1) (list-ref (rcs-rc rcs) (pos 5))]
+        [(= n 2) (list-ref (rcs-rc rcs) (pos 14))]
+        [(= n 3) (list-ref (rcs-rc rcs) (pos 23))]
+        [(= n 4) (list-ref (rcs-rc rcs) (pos 32))]
+        [(= n 5) (list-ref (rcs-rc rcs) (pos 41))]
+        [(= n 6) (list-ref (rcs-rc rcs) (pos 50))]))
+
+
+;; (listof Integer) RubixCubeState -> RubixCubeState
+;; given a list of numbers, performs actions in given order to rubix cube and updates list of moves
+
+(define (record loi0 rcs)
+  (local [(define (record0 rc loi rsf)
+            (cond [(empty? loi) (finish rc rsf)]
+                  [else
+                   (cond [(= 1 (first loi))                                                 ;;Clockwise on Column 1 
+                          (record0 (clock-col-1 rc) (rest loi) (append rsf (list 1)))]
+                         [(= 2 (first loi))                                                 ;;Counter-Clockwise on Column 1                                 
+                          (record0 (counter-col-1 rc) (rest loi) (append rsf (list 2)))]
+                         [(= 3 (first loi))                                                 ;;Clockwise on Column 3 
+                          (record0 (clock-col-3 rc) (rest loi) (append rsf (list 3)))]
+                         [(= 4 (first loi))                                                 ;;Counter-Clockwise on Column 3 
+                          (record0 (counter-col-3 rc) (rest loi) (append rsf (list 4)))]
+                         [(= 5 (first loi))                                                 ;;Right on Top 1 
+                          (record0 (rtl-t-1 rc) (rest loi) (append rsf (list 5)))]
+                         [(= 6 (first loi))                                                 ;;Left on Top 1 
+                          (record0 (ltr-t-1 rc) (rest loi) (append rsf (list 6)))]
+                         [(= 7 (first loi))                                                 ;;Right on Top 3 
+                          (record0 (rtl-t-7 rc) (rest loi) (append rsf (list 7)))]
+                         [(= 8 (first loi))                                                 ;;Left on Top 3 
+                          (record0 (ltr-t-7 rc) (rest loi) (append rsf (list 8)))]
+                         [(= 9 (first loi))                                                 ;;Right on Row 1 
+                          (record0 (ltr-row-10 rc) (rest loi) (append rsf (list 9)))]
+                         [(= 10 (first loi))                                                ;;Left on Row 1 
+                          (record0 (rtl-row-10 rc) (rest loi) (append rsf (list 10)))]
+                         [(= 11 (first loi))                                                ;;Right on Row 3 
+                          (record0 (ltr-row-16 rc) (rest loi) (append rsf (list 11)))]
+                         [(= 12 (first loi))                                                ;;Left on Row 3 
+                          (record0 (rtl-row-16 rc) (rest loi) (append rsf (list 12)))])]))
+          
+          (define (finish rc rsf)
+            (make-rcs rc (append (rcs-lon rcs) rsf)))]
+    (record0 (rcs-rc rcs) loi0 empty)))
+
+
+
+
+;; RubixCube -> Image
+;; draws the rubixcube image
+(check-expect (draw UNSOLVED2)
+              (local [(define (squared c)
+                        (cond [(string=? c "G") (square SQR_SIZE "solid" "green")]
+                              [(string=? c "O") (square SQR_SIZE "solid" "orange")]
+                              [(string=? c "W") (square SQR_SIZE "solid" "white")]
+                              [(string=? c "R") (square SQR_SIZE "solid" "red")]
+                              [(string=? c "B") (square SQR_SIZE "solid" "blue")]
+                              [(string=? c "Y") (square SQR_SIZE "solid" "yellow")]
+                              [(string=? c "No") (square SQR_SIZE "solid" "white")]))]
+                (above (beside (squared "No") (squared "No") (squared "No") (squared G) (squared Y) (squared G) (squared "No") (squared "No") (squared "No") (squared "No") (squared "No") (squared "No"))
+                       (beside (squared "No") (squared "No") (squared "No") (squared O) (squared B) (squared R) (squared "No") (squared "No") (squared "No") (squared "No") (squared "No") (squared "No"))
+                       (beside (squared "No") (squared "No") (squared "No") (squared W) (squared Y) (squared O) (squared "No") (squared "No") (squared "No") (squared "No") (squared "No") (squared "No"))
+                       (beside (squared Y) (squared G) (squared R) (squared B) (squared R) (squared W) (squared B) (squared B) (squared Y) (squared R) (squared B) (squared O))
+                       (beside (squared W) (squared O) (squared G) (squared Y) (squared W) (squared B) (squared O) (squared R) (squared W) (squared G) (squared Y) (squared B))
+                       (beside (squared O) (squared R) (squared G) (squared W) (squared R) (squared O) (squared Y) (squared O) (squared R) (squared B) (squared O) (squared G))
+                       (beside (squared "No") (squared "No") (squared "No") (squared R) (squared W) (squared B) (squared "No") (squared "No") (squared "No") (squared "No") (squared "No") (squared "No"))
+                       (beside (squared "No") (squared "No") (squared "No") (squared G) (squared G) (squared W) (squared "No") (squared "No") (squared "No") (squared "No") (squared "No") (squared "No"))
+                       (beside (squared "No") (squared "No") (squared "No") (squared W) (squared Y) (squared Y) (squared "No") (squared "No") (squared "No") (squared "No") (squared "No") (squared "No")))))
+
+(define (draw rc)
+  (local [(define (squared c)
+            (cond [(string=? c "G") (square SQR_SIZE "solid" "green")]
+                  [(string=? c "O") (square SQR_SIZE "solid" "orange")]
+                  [(string=? c "W") (square SQR_SIZE "solid" "white")]
+                  [(string=? c "R") (square SQR_SIZE "solid" "red")]
+                  [(string=? c "B") (square SQR_SIZE "solid" "blue")]
+                  [(string=? c "Y") (square SQR_SIZE "solid" "yellow")]
+                  [(string=? c "No") (square SQR_SIZE "solid" "white")]))]
+    (above (beside (squared "No") (squared "No") (squared "No") (squared (list-ref rc 0)) (squared (list-ref rc 1)) (squared (list-ref rc 2)) (squared "No") (squared "No") (squared "No") (squared "No") (squared "No") (squared "No"))
+           (beside (squared "No") (squared "No") (squared "No") (squared (list-ref rc 3)) (squared (list-ref rc 4)) (squared (list-ref rc 5)) (squared "No") (squared "No") (squared "No") (squared "No") (squared "No") (squared "No"))
+           (beside (squared "No") (squared "No") (squared "No") (squared (list-ref rc 6)) (squared (list-ref rc 7)) (squared (list-ref rc 8)) (squared "No") (squared "No") (squared "No") (squared "No") (squared "No") (squared "No"))
+           (beside (squared (list-ref rc 9)) (squared (list-ref rc 10)) (squared (list-ref rc 11)) (squared (list-ref rc 18)) (squared (list-ref rc 19)) (squared (list-ref rc 20)) (squared (list-ref rc 27)) (squared (list-ref rc 28)) (squared (list-ref rc 29)) (squared (list-ref rc 36)) (squared (list-ref rc 37)) (squared (list-ref rc 38)))
+           (beside (squared (list-ref rc 12)) (squared (list-ref rc 13)) (squared (list-ref rc 14)) (squared (list-ref rc 21)) (squared (list-ref rc 22)) (squared (list-ref rc 23)) (squared (list-ref rc 30)) (squared (list-ref rc 31)) (squared (list-ref rc 32)) (squared (list-ref rc 39)) (squared (list-ref rc 40)) (squared (list-ref rc 41)))
+           (beside (squared (list-ref rc 15)) (squared (list-ref rc 16)) (squared (list-ref rc 17)) (squared (list-ref rc 24)) (squared (list-ref rc 25)) (squared (list-ref rc 26)) (squared (list-ref rc 33)) (squared (list-ref rc 34)) (squared (list-ref rc 35)) (squared (list-ref rc 42)) (squared (list-ref rc 43)) (squared (list-ref rc 44)))
+           (beside (squared "No") (squared "No") (squared "No") (squared (list-ref rc 45)) (squared (list-ref rc 46)) (squared (list-ref rc 47)) (squared "No") (squared "No") (squared "No") (squared "No") (squared "No") (squared "No"))
+           (beside (squared "No") (squared "No") (squared "No") (squared (list-ref rc 48)) (squared (list-ref rc 49)) (squared (list-ref rc 50)) (squared "No") (squared "No") (squared "No") (squared "No") (squared "No") (squared "No"))
+           (beside (squared "No") (squared "No") (squared "No") (squared (list-ref rc 51)) (squared (list-ref rc 52)) (squared (list-ref rc 53)) (squared "No") (squared "No") (squared "No") (squared "No") (squared "No") (squared "No")))))
+
+
+;; (listof Pos) RubixCube -> (listof Color)
+;; given a list of pos, returns a list of colors at all positions in the given cube
+(check-expect (list-color empty SOLVED2) empty)
+(check-expect (list-color (list 1 2 3) SOLVED2) (list W W W))
+(check-expect (list-color (list 2 23 32 14 42 50) SOLVED2) (list W Y B G R O))
+
+(define (list-color lop rc)
+  (map (λ (n) (read-square rc (pos n))) lop))
+
+
+;; RubixCube Pos -> Color 
+;; Produce Color at given position on RubixCube.
+(check-expect (read-square SOLVED1 1) G)
+
+(define (read-square bd p)
+  (list-ref bd p))               
+
+
+;; RubixCube Pos Color -> Board
+;; produce new RubixCube with Color at given position
+(check-expect (fill-square SOLVED1 (pos 1) G)
+              (cons G (rest SOLVED1)))
+
+(define (fill-square bd p nv)
+  (append (take bd p)
+          (list nv)
+          (drop bd (add1 p))))
+
+;; Color Color Color RubixCube -> Pos
+;; Given three colors gives the position of the first color that is in that corner
+(check-expect (find-corner B R W UNSOLVED6) 1)
+(check-expect (find-corner R B W UNSOLVED6) 10)
+(check-expect (find-corner G O W UNSOLVED6) 9)
+(check-expect (find-corner O Y B UNSOLVED6) 27)
+
+
+
+
+(define (find-corner first second third rc)
+  (local [(define c1 (list (list-ref rc 0) (list-ref rc 9) (list-ref rc 38)))
+          (define c2 (list (list-ref rc 2) (list-ref rc 29) (list-ref rc 36)))
+          (define c3 (list (list-ref rc 6) (list-ref rc 11) (list-ref rc 18)))
+          (define c4 (list (list-ref rc 8) (list-ref rc 20) (list-ref rc 27)))
+          (define c5 (list (list-ref rc 45) (list-ref rc 24) (list-ref rc 17)))
+          (define c6 (list (list-ref rc 47) (list-ref rc 26) (list-ref rc 33)))
+          (define c7 (list (list-ref rc 51) (list-ref rc 44) (list-ref rc 15)))
+          (define c8 (list (list-ref rc 53) (list-ref rc 42) (list-ref rc 35)))]
+    (cond [(and (member? first c1)
+                (member? second c1)
+                (member? third c1))
+           (cond [(string=? first (list-ref rc 0)) 1]
+                 [(string=? first (list-ref rc 9)) 10]
+                 [else 38])]
+          [(and (member? first c2)
+                (member? second c2)
+                (member? third c2))
+           (cond [(string=? first (list-ref rc 2)) 3]
+                 [(string=? first (list-ref rc 29)) 30]
+                 [else 37])]
+          [(and (member? first c3)
+                (member? second c3)
+                (member? third c3))
+           (cond [(string=? first (list-ref rc 6)) 7]
+                 [(string=? first (list-ref rc 11)) 12]
+                 [else 19])]
+          [(and (member? first c4)
+                (member? second c4)
+                (member? third c4))
+           (cond [(string=? first (list-ref rc 8)) 9]
+                 [(string=? first (list-ref rc 20)) 21]
+                 [else 28])]
+          [(and (member? first c5)
+                (member? second c5)
+                (member? third c5))
+           (cond [(string=? first (list-ref rc 45)) 46]
+                 [(string=? first (list-ref rc 24)) 25]
+                 [else 18])]
+          [(and (member? first c6)
+                (member? second c6)
+                (member? third c6))
+           (cond [(string=? first (list-ref rc 47)) 48]
+                 [(string=? first (list-ref rc 26)) 27]
+                 [else 34])]
+          [(and (member? first c7)
+                (member? second c7)
+                (member? third c7))
+           (cond [(string=? first (list-ref rc 51)) 52]
+                 [(string=? first (list-ref rc 44)) 45]
+                 [else 16])]
+          [(and (member? first c8)
+                (member? second c8)
+                (member? third c8))
+           (cond [(string=? first (list-ref rc 53)) 54]
+                 [(string=? first (list-ref rc 42)) 43]
+                 [else 36])])))
+
+
+
+
+;; Color Color RubixCube -> (listof Pos)
+;; Given two colors gives the position of the first color and the second color that are on the same side piece
+(check-expect (find-side O W UNSOLVED2) 35)
+(check-expect (find-side W O UNSOLVED2) 51)
+(check-expect (find-side Y O UNSOLVED2) 53)
+(check-expect (find-side O Y UNSOLVED2) 44)
+(check-expect (find-side B R UNSOLVED2) 29)
+(check-expect (find-side Y G UNSOLVED2) 22)
+
+(define (find-side first second rc)
+  (local [(define partition
+            (list (list (list-ref rc 1) (list-ref rc 37))
+                  (list (list-ref rc 3) (list-ref rc 10))
+                  (list (list-ref rc 5) (list-ref rc 28))
+                  (list (list-ref rc 7) (list-ref rc 19))
+                  (list (list-ref rc 12) (list-ref rc 41))
+                  (list (list-ref rc 14) (list-ref rc 21))
+                  (list (list-ref rc 23) (list-ref rc 30))
+                  (list (list-ref rc 32) (list-ref rc 39))
+                  (list (list-ref rc 16) (list-ref rc 48))
+                  (list (list-ref rc 25) (list-ref rc 46))
+                  (list (list-ref rc 34) (list-ref rc 50))
+                  (list (list-ref rc 43) (list-ref rc 52))))]
+    (cond [(and (member? first (list-ref partition 0))
+                (member? second (list-ref partition 0)))
+           (if (string=? first (list-ref rc 1))
+               2
+               38)]
+          [(and (member? first (list-ref partition 1))
+                (member? second (list-ref partition 1)))
+           (if (string=? first (list-ref rc 3))
+               4
+               11)]
+          [(and (member? first (list-ref partition 2))
+                (member? second (list-ref partition 2)))
+           (if (string=? first (list-ref rc 5))
+               6
+               29)]
+          [(and (member? first (list-ref partition 3))
+                (member? second (list-ref partition 3)))
+           (if (string=? first (list-ref rc 7))
+               8
+               20)]
+          [(and (member? first (list-ref partition 4))
+                (member? second (list-ref partition 4)))
+           (if (string=? first (list-ref rc 12))
+               13
+               42)]
+          [(and (member? first (list-ref partition 5))
+                (member? second (list-ref partition 5)))
+           (if (string=? first (list-ref rc 14))
+               15
+               22)]
+          [(and (member? first (list-ref partition 6))
+                (member? second (list-ref partition 6)))
+           (if (string=? first (list-ref rc 23))
+               24
+               31)]
+          [(and (member? first (list-ref partition 7))
+                (member? second (list-ref partition 7)))
+           (if (string=? first (list-ref rc 32))
+               33
+               40)]
+          [(and (member? first (list-ref partition 8))
+                (member? second (list-ref partition 8)))
+           (if (string=? first (list-ref rc 16))
+               17
+               49)]
+          [(and (member? first (list-ref partition 9))
+                (member? second (list-ref partition 9)))
+           (if (string=? first (list-ref rc 25))
+               26
+               47)]
+          [(and (member? first (list-ref partition 10))
+                (member? second (list-ref partition 10)))
+           (if (string=? first (list-ref rc 34))
+               35
+               51)]
+          [(and (member? first (list-ref partition 11))
+                (member? second (list-ref partition 11)))
+           (if (string=? first (list-ref rc 43))
+               44
+               53)])))
+
+;; RubixCube -> Boolean
+;; produces true when the board is solved
+(check-expect (solved? SOLVED2) true)
+(check-expect (solved? UNSOLVED-ONE-MOVE) false)
+
+(define (solved? rc)
+  (andmap same? (square-color rc)))
+
+
+;; RubixCube -> (listof (listof Color))
+;; produces a list of all colors in the board in a set of 6 lists (one for each side)
+(check-expect (square-color SOLVED2)
+              (list (list W W W W W W W W W)
+                    (list G G G G G G G G G)
+                    (list Y Y Y Y Y Y Y Y Y)
+                    (list B B B B B B B B B)
+                    (list R R R R R R R R R)
+                    (list O O O O O O O O O)))
+
+(define (square-color rc)
+  (list (list-color SIDE1 rc)
+        (list-color SIDE2 rc)
+        (list-color SIDE3 rc)
+        (list-color SIDE4 rc)
+        (list-color SIDE5 rc)
+        (list-color SIDE6 rc)))
+
+
+;; (listof X) -> Boolean
+;; produces true if all values in the list are the same
+(check-expect (same? (list W)) true)
+(check-expect (same? (list W B)) false)
+(check-expect (same? (list W W)) true)
+
+(define (same? lox)
+  (local [(define f1 (first lox))]
+    (andmap (λ (n) (eq? f1 n)) lox)))
+
+
+;; (listof String) -> Boolean
+;; produces true if all values in a list are unique
+(check-expect (all-unique? empty) true)
+(check-expect (all-unique? (list W)) true)
+(check-expect (all-unique? (list W B)) true)
+(check-expect (all-unique? (list W B W)) false)
+
+(define (all-unique? lox)
+  (cond [(empty? lox) true]
+        [else
+         (if (member? (first lox) (rest lox))
+             false
+             (all-unique? (rest lox)))]))
+
+
+;; (listof Pos) (listof Pos) RubixCube -> RubixCube
+;; changes the colors in lot to the colors in lof, produces the new RubixCube
+(check-expect (change-cube (list 1 19) (list 19 46) SOLVED2)
+              (list W W W
+                    W W W
+                    W W W
+                    G G G
+                    G G G
+                    G G G
+                    W Y Y
+                    Y Y Y
+                    Y Y Y
+                    B B B
+                    B B B
+                    B B B
+                    R R R
+                    R R R
+                    R R R
+                    Y O O
+                    O O O
+                    O O O))
+
+(define (change-cube lof lot rc)
+  (local [(define (change lof lot0 rc0)
+            (cond [(empty? lot0) rc0]
+                  [else
+                   (change (rest lof)
+                           (rest lot0)
+                           (fill-square rc0
+                                        (pos (first lot0))
+                                        (first lof)))]))]
+    (change (list-color lof rc) lot rc)))
+
+;; Step
+
+
+;; RubixCube -> RubixCube
+;; Clockwise roatation on column 1
+(check-expect (clock-col-1 SOLVED2)
+              (list R W W
+                    R W W
+                    R W W
+                    G G G
+                    G G G
+                    G G G
+                    W Y Y
+                    W Y Y
+                    W Y Y
+                    B B B
+                    B B B
+                    B B B
+                    R R O
+                    R R O
+                    R R O
+                    Y O O
+                    Y O O
+                    Y O O))
+
+(define (clock-col-1 rc)
+  (change-cube CC1FROM CC1TO rc))
+
+
+;; RubixCube -> RubixCube
+;; Counter-clockwise roatation on column 1
+(check-expect (counter-col-1 SOLVED2)
+              (list Y W W
+                    Y W W
+                    Y W W
+                    G G G
+                    G G G
+                    G G G
+                    O Y Y
+                    O Y Y
+                    O Y Y
+                    B B B
+                    B B B
+                    B B B
+                    R R W
+                    R R W
+                    R R W
+                    R O O
+                    R O O
+                    R O O))
+
+(define (counter-col-1 rc)
+  (change-cube CC1TO CC1FROM rc))
+
+
+
+;; RubixCube -> RubixCube
+;; Clockwise roatation on column 3
+(check-expect (clock-col-3 SOLVED2)
+              (list W W R
+                    W W R
+                    W W R
+                    G G G
+                    G G G
+                    G G G
+                    Y Y W
+                    Y Y W
+                    Y Y W
+                    B B B
+                    B B B
+                    B B B
+                    O R R
+                    O R R
+                    O R R
+                    O O Y
+                    O O Y
+                    O O Y))
+
+(define (clock-col-3 rc)
+  (change-cube CC3FROM CC3TO rc))
+
+
+;; RubixCube -> RubixCube
+;; Counter-clockwise roatation on column 2
+(check-expect (counter-col-3 SOLVED2)
+              (list W W Y
+                    W W Y
+                    W W Y
+                    G G G
+                    G G G
+                    G G G
+                    Y Y O
+                    Y Y O
+                    Y Y O
+                    B B B
+                    B B B
+                    B B B
+                    W R R
+                    W R R
+                    W R R
+                    O O R
+                    O O R
+                    O O R))
+
+(define (counter-col-3 rc)
+  (change-cube CC3TO CC3FROM rc))
+
+
+;; RubixCube -> RubixCube
+;; Left to Right roatation on row 10
+(check-expect (ltr-row-10 SOLVED2)
+              (list W W W
+                    W W W
+                    W W W
+                    R R R
+                    G G G
+                    G G G
+                    G G G
+                    Y Y Y
+                    Y Y Y
+                    Y Y Y
+                    B B B
+                    B B B
+                    B B B
+                    R R R
+                    R R R
+                    O O O
+                    O O O
+                    O O O))
+
+(define (ltr-row-10 rc)
+  (change-cube RR1FROM RR1TO rc))
+
+
+;; RubixCube -> RubixCube
+;; Right to Left roatation on row 10
+(check-expect (rtl-row-10 SOLVED2)
+              (list W W W
+                    W W W
+                    W W W
+                    Y Y Y 
+                    G G G
+                    G G G
+                    B B B
+                    Y Y Y
+                    Y Y Y
+                    R R R
+                    B B B
+                    B B B
+                    G G G
+                    R R R
+                    R R R
+                    O O O
+                    O O O
+                    O O O))
+
+(define (rtl-row-10 rc)
+  (change-cube LR1FROM LR1TO rc))
+
+
+
+;; RubixCube -> RubixCube
+;; Left to Right roatation on row 16
+(check-expect (ltr-row-16 SOLVED2)
+              (list W W W
+                    W W W
+                    W W W
+                    G G G
+                    G G G
+                    R R R
+                    Y Y Y
+                    Y Y Y
+                    G G G
+                    B B B
+                    B B B
+                    Y Y Y
+                    R R R
+                    R R R
+                    B B B
+                    O O O
+                    O O O
+                    O O O))
+
+(define (ltr-row-16 rc)
+  (change-cube RR3FROM RR3TO rc))
+
+
+;; RubixCube -> RubixCube
+;; Right to Left roatation on row 16
+(check-expect (rtl-row-16 SOLVED2)
+              (list W W W
+                    W W W
+                    W W W
+                    G G G
+                    G G G
+                    Y Y Y
+                    Y Y Y
+                    Y Y Y
+                    B B B
+                    B B B
+                    B B B
+                    R R R
+                    R R R
+                    R R R
+                    G G G
+                    O O O
+                    O O O
+                    O O O))
+
+(define (rtl-row-16 rc)
+  (change-cube LR3FROM LR3TO rc))
+
+;; RubixCube -> RubixCube
+;; Right to Left roatation on Top 1
+(define (rtl-t-1 rc)
+  (change-cube RT1FROM RT1TO rc))
+
+;; RubixCube -> RubixCube
+;; Left to Right roatation on Top 1
+(define (ltr-t-1 rc)
+  (change-cube LT1FROM LT1TO rc))
+
+
+;; RubixCube -> RubixCube
+;; Right to Left roatation on Top 7
+(define (rtl-t-7 rc)
+  (change-cube RT7FROM RT7TO rc))
+
+;; RubixCube -> RubixCube
+;; Left to Right roatation on Top 7
+(define (ltr-t-7 rc)
+  (change-cube LT7FROM LT7TO rc))
+
